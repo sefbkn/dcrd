@@ -8,8 +8,6 @@ package addrmgr
 import (
 	"net"
 	"testing"
-
-	"github.com/decred/dcrd/wire"
 )
 
 // TestIPTypes ensures the various functions which determine the type of an IP
@@ -135,7 +133,7 @@ func TestIPTypes(t *testing.T) {
 			t.Errorf("IsValid %s\n got: %v want: %v", test.ip, rv, test.valid)
 		}
 
-		if rv := IsRoutable(test.ip); rv != test.routable {
+		if rv := isRoutable(test.ip); rv != test.routable {
 			t.Errorf("IsRoutable %s\n got: %v want: %v", test.ip, rv, test.routable)
 		}
 	}
@@ -191,11 +189,10 @@ func TestGroupKey(t *testing.T) {
 
 	for i, test := range tests {
 		nip := net.ParseIP(test.ip)
-		na := wire.NewNetAddressIPPort(nip, 8333, wire.SFNodeNetwork)
-		if key := GroupKey(na); key != test.expected {
+		na := NewNetAddressIPPort(nip, 8333, sfNodeNetwork)
+		if key := na.GroupKey(); key != test.expected {
 			t.Errorf("TestGroupKey #%d (%s): unexpected group key "+
-				"- got '%s', want '%s'", i, test.name,
-				key, test.expected)
+				"- got '%s', want '%s'", i, test.name, key, test.expected)
 		}
 	}
 }

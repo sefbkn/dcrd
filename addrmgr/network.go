@@ -8,8 +8,6 @@ package addrmgr
 import (
 	"fmt"
 	"net"
-
-	"github.com/decred/dcrd/wire"
 )
 
 var (
@@ -251,7 +249,7 @@ func isValid(netIP net.IP) bool {
 // IsRoutable returns whether or not the passed address is routable over
 // the public internet.  This is true as long as the address is valid and is not
 // in any reserved ranges.
-func IsRoutable(netIP net.IP) bool {
+func isRoutable(netIP net.IP) bool {
 	return isValid(netIP) && !(isRFC1918(netIP) || isRFC2544(netIP) ||
 		isRFC3927(netIP) || isRFC4862(netIP) || isRFC3849(netIP) ||
 		isRFC4843(netIP) || isRFC5737(netIP) || isRFC6598(netIP) ||
@@ -263,12 +261,12 @@ func IsRoutable(netIP net.IP) bool {
 // "local" for a local address, the string "tor:key" where key is the /4 of the
 // onion address for Tor address, and the string "unroutable" for an unroutable
 // address.
-func GroupKey(na *wire.NetAddress) string {
-	netIP := na.IP
+func (na *NetAddress) GroupKey() string {
+	netIP := net.IP(na.IP)
 	if isLocal(netIP) {
 		return "local"
 	}
-	if !IsRoutable(netIP) {
+	if !isRoutable(netIP) {
 		return "unroutable"
 	}
 	if isIPv4(netIP) {

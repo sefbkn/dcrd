@@ -127,6 +127,35 @@ const (
 	TORv2Address
 )
 
+// NetAddressTypeFlags represents network address types as bit flags.  It is
+// used to request desired network address types from the address manager.
+type NetAddressTypeFlags uint64
+
+const (
+	// IPv4AddressFlag represents a IPv4 network address type.
+	IPv4AddressFlag NetAddressTypeFlags = iota << 0
+
+	// IPv6AddressFlag represents a IPv6 network address type.
+	IPv6AddressFlag
+
+	// TORv2AddressFlag represents a TORv2 network address type.
+	TORv2AddressFlag
+)
+
+// isAddressTypeFlagSet returns whether the provided network address type
+// corresponds to a flag set that represents the network address type.
+func isAddressTypeFlagSet(addrType NetAddressType, flags NetAddressTypeFlags) bool {
+	switch addrType {
+	case IPv4Address:
+		return flags&IPv4AddressFlag == IPv4AddressFlag
+	case IPv6Address:
+		return flags&IPv6AddressFlag == IPv6AddressFlag
+	case TORv2Address:
+		return flags&TORv2AddressFlag == TORv2AddressFlag
+	}
+	return false
+}
+
 // isRFC1918 returns whether or not the passed address is part of the IPv4
 // private network address space as defined by RFC1918 (10.0.0.0/8,
 // 172.16.0.0/12, or 192.168.0.0/16).

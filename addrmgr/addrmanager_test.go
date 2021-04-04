@@ -20,6 +20,11 @@ import (
 // Put some IP in here for convenience. Points to google.
 var someIP = "173.194.115.66"
 
+// defaultAddressTypeFlags defines a default set of all desired network address
+// types.
+const defaultAddressTypeFlags = IPv4AddressFlag | IPv6AddressFlag |
+	TORv2AddressFlag
+
 func lookupFunc(host string) ([]net.IP, error) {
 	return nil, errors.New("not implemented")
 }
@@ -347,7 +352,7 @@ func TestGood(t *testing.T) {
 			addrsToAdd)
 	}
 
-	numCache := len(n.AddressCache())
+	numCache := len(n.AddressCache(defaultAddressTypeFlags))
 	if numCache >= numAddrs/4 {
 		t.Errorf("Number of addresses in cache: got %d, want %d", numCache,
 			numAddrs/4)
@@ -555,7 +560,7 @@ func TestGetBestLocalAddress(t *testing.T) {
 
 	// Test against default when there's no address
 	for x, test := range tests {
-		got := amgr.GetBestLocalAddress(test.remoteAddr)
+		got := amgr.GetBestLocalAddress(test.remoteAddr, defaultAddressTypeFlags)
 		if !reflect.DeepEqual(test.want0.IP, got.IP) {
 			t.Errorf("TestGetBestLocalAddress test1 #%d failed for remote address %s: want %s got %s",
 				x, test.remoteAddr.IP, test.want1.IP, got.IP)
@@ -569,7 +574,7 @@ func TestGetBestLocalAddress(t *testing.T) {
 
 	// Test against want1
 	for x, test := range tests {
-		got := amgr.GetBestLocalAddress(test.remoteAddr)
+		got := amgr.GetBestLocalAddress(test.remoteAddr, defaultAddressTypeFlags)
 		if !reflect.DeepEqual(test.want1.IP, got.IP) {
 			t.Errorf("TestGetBestLocalAddress test1 #%d failed for remote address %s: want %s got %s",
 				x, test.remoteAddr.IP, test.want1.IP, got.IP)
@@ -583,7 +588,7 @@ func TestGetBestLocalAddress(t *testing.T) {
 
 	// Test against want2
 	for x, test := range tests {
-		got := amgr.GetBestLocalAddress(test.remoteAddr)
+		got := amgr.GetBestLocalAddress(test.remoteAddr, defaultAddressTypeFlags)
 		if !reflect.DeepEqual(test.want2.IP, got.IP) {
 			t.Errorf("TestGetBestLocalAddress test2 #%d failed for remote address %s: want %s got %s",
 				x, test.remoteAddr.IP, test.want2.IP, got.IP)

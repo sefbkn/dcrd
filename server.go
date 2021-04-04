@@ -704,6 +704,13 @@ func hasServices(advertised, desired wire.ServiceFlag) bool {
 	return advertised&desired == desired
 }
 
+// supportedNetAddressTypeFlags returns the network address type flags supported
+// by the provided protocol version.
+func supportedNetAddressTypeFlags(pver uint32) addrmgr.NetAddressTypeFlags {
+	return addrmgr.IPv4AddressFlag | addrmgr.IPv6AddressFlag |
+		addrmgr.TORv2AddressFlag
+}
+
 // OnVersion is invoked when a peer receives a version wire message and is used
 // to negotiate the protocol version details as well as kick start the
 // communications.
@@ -719,6 +726,7 @@ func (sp *serverPeer) OnVersion(_ *peer.Peer, msg *wire.MsgVersion) {
 	// it is updated regardless in the case a new minimum protocol version is
 	// enforced and the remote node has not upgraded yet.
 	isInbound := sp.Inbound()
+	msgProtocolVersion := uint32(msg.ProtocolVersion)
 	remoteAddr := wireToAddrmgrNetAddress(sp.NA())
 	addrManager := sp.server.addrManager
 	if !cfg.SimNet && !cfg.RegNet && !isInbound {
@@ -730,7 +738,7 @@ func (sp *serverPeer) OnVersion(_ *peer.Peer, msg *wire.MsgVersion) {
 	}
 
 	// Reject peers that have a protocol version that is too old.
-	if msg.ProtocolVersion < int32(wire.SendHeadersVersion) {
+	if msgProtocolVersion < wire.SendHeadersVersion {
 		srvrLog.Debugf("Rejecting peer %s with protocol version %d prior to "+
 			"the required version %d", sp.Peer, msg.ProtocolVersion,
 			wire.SendHeadersVersion)
@@ -760,7 +768,8 @@ func (sp *serverPeer) OnVersion(_ *peer.Peer, msg *wire.MsgVersion) {
 		// known tip.
 		if !cfg.DisableListen && sp.server.syncManager.IsCurrent() {
 			// Get address that best matches.
-			lna := addrManager.GetBestLocalAddress(remoteAddr)
+			addressTypeFlags := supportedNetAddressTypeFlags(msgProtocolVersion)
+			lna := addrManager.GetBestLocalAddress(remoteAddr, addressTypeFlags)
 			if lna.IsRoutable() {
 				// Filter addresses the peer already knows about.
 				addresses := []*addrmgr.NetAddress{lna}
@@ -1387,7 +1396,9 @@ func (sp *serverPeer) OnGetAddr(p *peer.Peer, msg *wire.MsgGetAddr) {
 	sp.addrsSent = true
 
 	// Get the current known addresses from the address manager.
-	addrCache := sp.server.addrManager.AddressCache()
+	pver := sp.ProtocolVersion()
+	addressTypeFlags := supportedNetAddressTypeFlags(pver)
+	addrCache := sp.server.addrManager.AddressCache(addressTypeFlags)
 
 	// Push the addresses.
 	sp.pushAddrMsg(addrCache)

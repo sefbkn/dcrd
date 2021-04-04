@@ -752,6 +752,38 @@ func (a *AddrManager) reset() {
 	}
 }
 
+// ParseHost deconstructs a given host to its respective []byte representation
+// and also returns the network address type.  If an error occurs while decoding
+// an onion address, the error is returned.  If the host cannot be decoded then
+// an unknown address type is returned without error.
+func ParseHost(host string) (NetAddressType, []byte, error) {
+	if strings.HasSuffix(host, ".onion") {
+		// Check if this is a TorV2 address.
+		if len(host) == 22 {
+			data, err := base32.StdEncoding.DecodeString(
+				strings.ToUpper(host[:16]))
+			if err != nil {
+				return UnknownAddressType, nil, err
+			}
+			prefix := []byte{0xfd, 0x87, 0xd8, 0x7e, 0xeb, 0x43}
+			addrBytes := append(prefix, data...)
+			return TORv2Address, addrBytes, nil
+		}
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		if isIPv4(ip) {
+			return IPv4Address, ip.To4(), nil
+		}
+		if isOnionCatTor(ip) {
+			return TORv2Address, ip, nil
+		}
+		return IPv6Address, ip, nil
+	}
+
+	return UnknownAddressType, nil, nil
+}
+
 // HostToNetAddress parses and returns a network address given a hostname in a
 // supported format (IPv4, IPv6, TORv2).  If the hostname cannot be immediately
 // converted from a known address format, it will be resolved using the lookup
@@ -760,31 +792,24 @@ func (a *AddrManager) reset() {
 //
 // This function is safe for concurrent access.
 func (a *AddrManager) HostToNetAddress(host string, port uint16, services ServiceFlag) (*NetAddress, error) {
-	// Tor address is 16 char base32 + ".onion"
-	var ip net.IP
-	if len(host) == 22 && host[16:] == ".onion" {
-		// go base32 encoding uses capitals (as does the rfc
-		// but Tor and bitcoind tend to user lowercase, so we switch
-		// case here.
-		data, err := base32.StdEncoding.DecodeString(
-			strings.ToUpper(host[:16]))
-		if err != nil {
-			return nil, err
-		}
-		prefix := []byte{0xfd, 0x87, 0xd8, 0x7e, 0xeb, 0x43}
-		ip = net.IP(append(prefix, data...))
-	} else if ip = net.ParseIP(host); ip == nil {
-		ips, err := a.lookupFunc(host)
-		if err != nil {
-			return nil, err
-		}
-		if len(ips) == 0 {
-			return nil, fmt.Errorf("no addresses found for %s", host)
-		}
-		ip = ips[0]
+	networkID, addrBytes, err := ParseHost(host)
+	if err != nil {
+		return nil, err
 	}
-
-	return NewNetAddressIPPort(ip, port, services), nil
+	if networkID != UnknownAddressType {
+		// Since the host has been successfully decoded, there is no need to
+		// perform a DNS lookup.
+		now := time.Unix(time.Now().Unix(), 0)
+		return NewNetAddressByType(networkID, addrBytes, port, now, services)
+	}
+	ips, err := a.lookupFunc(host)
+	if err != nil {
+		return nil, err
+	}
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("no addresses found for %s", host)
+	}
+	return NewNetAddressIPPort(ips[0], port, services), nil
 }
 
 // GetAddress returns a single address that should be routable.  It picks a
@@ -1235,7 +1260,10 @@ func (a *AddrManager) GetBestLocalAddress(remoteAddr *NetAddress) *NetAddress {
 //
 // This function is safe for concurrent access.
 func (a *AddrManager) ValidatePeerNa(localAddr, remoteAddr *NetAddress) (bool, NetAddressReach) {
-	net := getNetwork(localAddr.IP)
+	net := localAddr.Type
+	if isLocal(localAddr.IP) {
+		net = UnknownAddressType
+	}
 	reach := getReachabilityFrom(localAddr, remoteAddr)
 	valid := (net == IPv4Address && reach == Ipv4) || (net == IPv6Address &&
 		(reach == Ipv6Weak || reach == Ipv6Strong || reach == Teredo))

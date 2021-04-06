@@ -689,6 +689,7 @@ func (a *AddrManager) AddressCache(addressTypeFlags NetAddressTypeFlags) []*NetA
 	// Determine length of all addresses in index.
 	addrLen := len(a.addrIndex)
 	if addrLen == 0 {
+		log.Debug("Address index empty")
 		return nil
 	}
 
@@ -697,6 +698,8 @@ func (a *AddrManager) AddressCache(addressTypeFlags NetAddressTypeFlags) []*NetA
 	for _, v := range a.addrIndex {
 		// Skip address types not requested by the caller.
 		if !isAddressTypeFlagSet(v.na.Type, addressTypeFlags) {
+			log.Debugf("Skipping address %s of type %x, does not match flags %x", v.na,
+				v.na.Type, addressTypeFlags)
 			continue
 		}
 		// Skip low quality addresses.

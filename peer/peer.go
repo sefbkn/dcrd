@@ -1941,7 +1941,7 @@ func (p *Peer) localVersionMsg() (*wire.MsgVersion, error) {
 	theirNA := p.addrmgrToWireNetAddressExceptProxy(p.na)
 	if theirNA == nil {
 		theirNA = wire.NewNetAddressIPPort(net.IP([]byte{0, 0, 0, 0}), 0,
-			theirNA.Services)
+			wire.ServiceFlag(p.na.Services))
 	}
 
 	// Create a wire.NetAddress with only the services set to use as the

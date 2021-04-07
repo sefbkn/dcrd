@@ -838,7 +838,7 @@ func (sp *serverPeer) OnVersion(_ *peer.Peer, msg *wire.MsgVersion) {
 				}
 			} else {
 				srvrLog.Debugf("Local address %s is not routable and will not "+
-					"be broadcast to outbound peer %v", lna.Key(), sp.Addr())
+					"be broadcast to outbound peer %v", lna, sp.Addr())
 			}
 		}
 
@@ -1484,6 +1484,8 @@ func (sp *serverPeer) OnGetAddrV2(p *peer.Peer, msg *wire.MsgGetAddrV2) {
 		return
 	}
 
+	peerLog.Debugf("OnGetAddrV2 invoked for peer %s", p.Addr())
+
 	// Do not accept getaddrv2 requests from outbound peers.  This reduces
 	// fingerprinting attacks.
 	if !p.Inbound() {
@@ -1505,7 +1507,9 @@ func (sp *serverPeer) OnGetAddrV2(p *peer.Peer, msg *wire.MsgGetAddrV2) {
 
 	// Get the current known addresses from the address manager.
 	addressTypeFlags := supportedNetAddressTypeFlags(sp.ProtocolVersion())
+	peerLog.Debugf("OnGetAddrV2 %s - Finding for address flags %x", p.Addr(), addressTypeFlags)
 	addrCache := sp.server.addrManager.AddressCache(addressTypeFlags)
+	peerLog.Debugf("OnGetAddrV2 %s - Sending addresses %v len %d", p.Addr(), addrCache, len(addrCache))
 
 	// Push the addresses.
 	sp.pushAddrV2Msg(addrCache)
@@ -1568,6 +1572,8 @@ func (sp *serverPeer) OnAddrV2(p *peer.Peer, msg *wire.MsgAddrV2) {
 	if cfg.SimNet || cfg.RegNet {
 		return
 	}
+
+	peerLog.Debugf("OnAddrV2 invoked for peer %s", p.Addr())
 
 	now := time.Now()
 	for _, netAddr := range msg.AddrList {

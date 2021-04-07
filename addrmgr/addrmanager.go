@@ -704,22 +704,36 @@ func (a *AddrManager) AddressCache(addressTypeFlags NetAddressTypeFlags) []*NetA
 		}
 		// Skip low quality addresses.
 		if v.isBad() {
+			log.Debugf("Skipping bad address %s of type %x", v.na,
+				v.na.Type)
+
 			continue
 		}
 		// Skip addresses that never succeeded.
 		if v.lastsuccess.IsZero() {
+			log.Debugf("Skipping zero address %s of type %x", v.na,
+				v.na.Type)
+
 			continue
 		}
+
+		log.Debugf("Including address %s of type %x", v.na,
+			v.na.Type)
+
 		allAddr = append(allAddr, v.na)
 	}
 
 	// Adjust length, we only deal with high quality addresses now.
 	addrLen = len(allAddr)
 
+	log.Debugf("addrLen - %d", addrLen)
+
 	numAddresses := addrLen * getKnownAddressPercentage / 100
 	if numAddresses > getKnownAddressLimit {
 		numAddresses = getKnownAddressLimit
 	}
+
+	log.Debugf("numAddresses - %d", addrLen)
 
 	// Fisher-Yates shuffle the array. We only need to do the first
 	// numAddresses since we are throwing away the rest.
@@ -729,8 +743,11 @@ func (a *AddrManager) AddressCache(addressTypeFlags NetAddressTypeFlags) []*NetA
 		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
 	}
 
+	newAllAddr := allAddr[0:numAddresses]
+	log.Debugf("newAllAddr - %v", newAllAddr)
+
 	// Slice off the limit we are willing to share.
-	return allAddr[0:numAddresses]
+	return newAllAddr
 }
 
 // reset resets the address manager by reinitialising the random source
